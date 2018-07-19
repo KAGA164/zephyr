@@ -50,6 +50,7 @@ static const char *gap_name = CONFIG_BT_DEVICE_NAME;
 static const u16_t gap_appearance = CONFIG_BT_DEVICE_APPEARANCE;
 
 static sys_slist_t db;
+static struct bt_gatt_notify_cb *callback_list;
 
 static ssize_t read_name(struct bt_conn *conn, const struct bt_gatt_attr *attr,
 			 void *buf, u16_t len, u16_t offset)
@@ -621,6 +622,28 @@ struct notify_data {
 	struct bt_gatt_indicate_params *params;
 };
 
+void bt_gatt_cb_register(struct bt_gatt_notify_cb *cb)
+{
+	cb->_next = callback_list;
+	callback_list = cb;
+}
+
+static void notify_notification_tx_complete(struct bt_conn *conn)
+{
+	struct bt_gatt_notify_cb *cb;
+
+	for (cb = callback_list; cb; cb = cb->_next) {
+		if (cb->notify_complete) {
+			cb->notify_complete(conn);
+		}
+	}
+}
+
+static void notification_tx_complete_cb(struct bt_conn *conn)
+{
+	notify_notification_tx_complete(conn);
+}
+
 static int gatt_notify(struct bt_conn *conn, u16_t handle, const void *data,
 		       size_t len)
 {
@@ -641,7 +664,7 @@ static int gatt_notify(struct bt_conn *conn, u16_t handle, const void *data,
 	net_buf_add(buf, len);
 	memcpy(nfy->value, data, len);
 
-	bt_l2cap_send(conn, BT_L2CAP_CID_ATT, buf);
+	bt_l2cap_send_cb(conn, BT_L2CAP_CID_ATT, buf, notification_tx_complete_cb);
 
 	return 0;
 }

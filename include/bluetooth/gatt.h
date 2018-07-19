@@ -677,6 +677,35 @@ ssize_t bt_gatt_attr_read_cpf(struct bt_conn *conn,
 	.user_data = _value,						\
 }
 
+/** @brief GATT callback structure.
+ *
+ *  It is registered with the help of the bt_gatt_cb_register() API.
+ *  It's permissible to register multiple instances of this @ref bt_gatt_cb_register
+ *  type, in case different modules of an application are interested in
+ *  tracking the GATT request state. If a callback is not of interest for
+ *  an instance, it may be set to NULL and will as a consequence not be
+ *  used for that instance.
+ */
+struct bt_gatt_notify_cb {
+	/** @brief The notification TX completed.
+	 *
+	 *  This callback notifies the application of about
+	 *  notification transmission completed.
+	 *
+	 *  @param conn New connection object.
+	 */
+	void (*notify_complete)(struct bt_conn *conn);
+	struct bt_gatt_notify_cb *_next;
+};
+
+/** @brief Register gatt callbacks.
+ *
+ *  Register callbacks to monitor gatt request.
+ *
+ *  @param cb Callback struct.
+ */
+void bt_gatt_cb_register(struct bt_gatt_notify_cb *cb);
+
 /** @brief Notify attribute value change.
  *
  *  Send notification of attribute value change, if connection is NULL notify
