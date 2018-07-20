@@ -565,15 +565,17 @@ static void smp_check_complete(struct bt_conn *conn, u8_t dist_complete)
 #endif
 
 #if defined(CONFIG_BT_PRIVACY)
-static void id_sent(struct bt_conn *conn)
+static void id_sent(struct bt_conn *conn, void *context)
 {
+	ARG_UNUSED(context);
 	smp_check_complete(conn, BT_SMP_DIST_ID_KEY);
 }
 #endif /* CONFIG_BT_PRIVACY */
 
 #if defined(CONFIG_BT_SIGNING)
-static void sign_info_sent(struct bt_conn *conn)
+static void sign_info_sent(struct bt_conn *conn, void *context)
 {
+	ARG_UNUSED(context);
 	smp_check_complete(conn, BT_SMP_DIST_SIGN);
 }
 #endif /* CONFIG_BT_SIGNING */
@@ -1661,8 +1663,9 @@ static u8_t smp_send_pairing_confirm(struct bt_smp *smp)
 }
 
 #if !defined(CONFIG_BT_SMP_SC_ONLY)
-static void ident_sent(struct bt_conn *conn)
+static void ident_sent(struct bt_conn *conn, void *context)
 {
+	ARG_UNUSED(context);
 	smp_check_complete(conn, BT_SMP_DIST_ENC_KEY);
 }
 

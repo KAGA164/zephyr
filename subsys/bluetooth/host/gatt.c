@@ -628,27 +628,32 @@ void bt_gatt_cb_register(struct bt_gatt_notify_cb *cb)
 	callback_list = cb;
 }
 
-static void notify_notification_tx_complete(struct bt_conn *conn)
+static void notify_notification_tx_complete(struct bt_conn *conn,
+					    const struct bt_gatt_attr *attr)
 {
 	struct bt_gatt_notify_cb *cb;
 
 	for (cb = callback_list; cb; cb = cb->_next) {
 		if (cb->notify_complete) {
-			cb->notify_complete(conn);
+			cb->notify_complete(conn, attr);
 		}
 	}
 }
 
-static void notification_tx_complete_cb(struct bt_conn *conn)
+static void notification_tx_complete_cb(struct bt_conn *conn, void *context)
 {
-	notify_notification_tx_complete(conn);
+	const struct bt_gatt_attr *attr = (struct bt_gatt_attr*)context;
+
+	notify_notification_tx_complete(conn, attr);
 }
 
-static int gatt_notify(struct bt_conn *conn, u16_t handle, const void *data,
+static int gatt_notify(struct bt_conn *conn, u16_t handle,
+		       const struct bt_gatt_attr *attr, const void *data,
 		       size_t len)
 {
 	struct net_buf *buf;
 	struct bt_att_notify *nfy;
+	struct conn_tx_cb *tx_cb;
 
 	buf = bt_att_create_pdu(conn, BT_ATT_OP_NOTIFY, sizeof(*nfy) + len);
 	if (!buf) {
@@ -663,6 +668,9 @@ static int gatt_notify(struct bt_conn *conn, u16_t handle, const void *data,
 
 	net_buf_add(buf, len);
 	memcpy(nfy->value, data, len);
+
+	tx_cb = net_buf_user_data(buf);
+	tx_cb->context = (void*)attr;
 
 	bt_l2cap_send_cb(conn, BT_L2CAP_CID_ATT, buf, notification_tx_complete_cb);
 
@@ -821,7 +829,7 @@ static u8_t notify_cb(const struct bt_gatt_attr *attr, void *user_data)
 		if (data->type == BT_GATT_CCC_INDICATE) {
 			err = gatt_indicate(conn, data->params);
 		} else {
-			err = gatt_notify(conn, data->attr->handle,
+			err = gatt_notify(conn, data->attr->handle, data->attr,
 					  data->data, data->len);
 		}
 
@@ -856,7 +864,7 @@ int bt_gatt_notify(struct bt_conn *conn, const struct bt_gatt_attr *attr,
 	}
 
 	if (conn) {
-		return gatt_notify(conn, attr->handle, data, len);
+		return gatt_notify(conn, attr->handle, attr, data, len);
 	}
 
 	nfy.err = -ENOTCONN;
