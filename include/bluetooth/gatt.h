@@ -694,7 +694,8 @@ struct bt_gatt_notify_cb {
 	 *
 	 *  @param conn New connection object.
 	 */
-	void (*notify_complete)(struct bt_conn *conn);
+	void (*notify_complete)(struct bt_conn *conn,
+				const struct bt_gatt_attr *attr);
 	struct bt_gatt_notify_cb *_next;
 };
 

@@ -66,12 +66,6 @@ const struct bt_conn_auth_cb *bt_auth;
 static struct bt_conn conns[CONFIG_BT_MAX_CONN];
 static struct bt_conn_cb *callback_list;
 
-struct conn_tx_cb {
-	bt_conn_tx_cb_t cb;
-};
-
-#define conn_tx(buf) ((struct conn_tx_cb *)net_buf_user_data(buf))
-
 static struct bt_conn_tx conn_tx[CONFIG_BT_CONN_TX_MAX];
 static sys_slist_t free_tx = SYS_SLIST_STATIC_INIT(&free_tx);
 
@@ -1087,6 +1081,7 @@ int bt_conn_send_cb(struct bt_conn *conn, struct net_buf *buf,
 static void tx_free(struct bt_conn_tx *tx)
 {
 	tx->cb = NULL;
+	tx->context = NULL;
 	sys_slist_prepend(&free_tx, &tx->node);
 }
 
@@ -1098,7 +1093,7 @@ void bt_conn_notify_tx(struct bt_conn *conn)
 
 	while ((tx = k_fifo_get(&conn->tx_notify, K_NO_WAIT))) {
 		if (tx->cb) {
-			tx->cb(conn);
+			tx->cb(conn, tx->context);
 		}
 
 		tx_free(tx);
@@ -1121,7 +1116,7 @@ static void notify_tx(void)
 	}
 }
 
-static sys_snode_t *add_pending_tx(struct bt_conn *conn, bt_conn_tx_cb_t cb)
+static sys_snode_t *add_pending_tx(struct bt_conn *conn, bt_conn_tx_cb_t cb, void *context)
 {
 	sys_snode_t *node;
 	unsigned int key;
@@ -1132,6 +1127,7 @@ static sys_snode_t *add_pending_tx(struct bt_conn *conn, bt_conn_tx_cb_t cb)
 
 	node = sys_slist_get_not_empty(&free_tx);
 	CONTAINER_OF(node, struct bt_conn_tx, node)->cb = cb;
+	CONTAINER_OF(node, struct bt_conn_tx, node)->context = context;
 
 	key = irq_lock();
 	sys_slist_append(&conn->tx_pending, node);
@@ -1156,6 +1152,7 @@ static bool send_frag(struct bt_conn *conn, struct net_buf *buf, u8_t flags,
 {
 	struct bt_hci_acl_hdr *hdr;
 	bt_conn_tx_cb_t cb;
+	void *context;
 	sys_snode_t *node;
 	int err;
 
@@ -1178,9 +1175,10 @@ static bool send_frag(struct bt_conn *conn, struct net_buf *buf, u8_t flags,
 	hdr->len = sys_cpu_to_le16(buf->len - sizeof(*hdr));
 
 	cb = conn_tx(buf)->cb;
+	context = conn_tx(buf)->context;
 	bt_buf_set_type(buf, BT_BUF_ACL_OUT);
 
-	node = add_pending_tx(conn, cb);
+	node = add_pending_tx(conn, cb, context);
 
 	err = bt_send(buf);
 	if (err) {

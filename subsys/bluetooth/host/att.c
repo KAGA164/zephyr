@@ -120,8 +120,9 @@ static struct bt_att *att_get(struct bt_conn *conn)
 	return CONTAINER_OF(chan, struct bt_att, chan);
 }
 
-static void att_cfm_sent(struct bt_conn *conn)
+static void att_cfm_sent(struct bt_conn *conn, void *context)
 {
+	ARG_UNUSED(context);
 	struct bt_att *att = att_get(conn);
 
 	BT_DBG("conn %p att %p", conn, att);
@@ -133,8 +134,9 @@ static void att_cfm_sent(struct bt_conn *conn)
 	k_sem_give(&att->tx_sem);
 }
 
-static void att_rsp_sent(struct bt_conn *conn)
+static void att_rsp_sent(struct bt_conn *conn, void *context)
 {
+	ARG_UNUSED(context);
 	struct bt_att *att = att_get(conn);
 
 	BT_DBG("conn %p att %p", conn, att);
@@ -146,8 +148,9 @@ static void att_rsp_sent(struct bt_conn *conn)
 	k_sem_give(&att->tx_sem);
 }
 
-static void att_req_sent(struct bt_conn *conn)
+static void att_req_sent(struct bt_conn *conn, void *context)
 {
+	ARG_UNUSED(context);
 	struct bt_att *att = att_get(conn);
 
 	BT_DBG("conn %p att %p att->req %p", conn, att, att->req);
@@ -160,8 +163,9 @@ static void att_req_sent(struct bt_conn *conn)
 	}
 }
 
-static void att_pdu_sent(struct bt_conn *conn)
+static void att_pdu_sent(struct bt_conn *conn, void *context)
 {
+	ARG_UNUSED(context);
 	struct bt_att *att = att_get(conn);
 
 	BT_DBG("conn %p att %p", conn, att);

@@ -74,12 +74,20 @@ struct bt_conn_sco {
 };
 #endif
 
-typedef void (*bt_conn_tx_cb_t)(struct bt_conn *conn);
+typedef void (*bt_conn_tx_cb_t)(struct bt_conn *conn, void *context);
 
 struct bt_conn_tx {
 	sys_snode_t node;
 	bt_conn_tx_cb_t cb;
+	void *context;
 };
+
+struct conn_tx_cb {
+	bt_conn_tx_cb_t cb;
+	void *context;
+};
+
+#define conn_tx(buf) ((struct conn_tx_cb *)net_buf_user_data(buf))
 
 struct bt_conn {
 	u16_t			handle;
